@@ -1,0 +1,15 @@
+# Python-specific files and folders
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Node.js-specific files and folders
+node_modules/
+
+# Files you want to ignore
+app.py
+models/
+
+# Other common files to ignore
+.DS_Store
