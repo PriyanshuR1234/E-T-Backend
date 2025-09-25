@@ -20,6 +20,7 @@ const {
   TWILIO_PHONE_NUMBER,
   BASE_URL,
   GEMINI_API_KEY,
+  PYTHON_API_URL,
   PORT,
 } = process.env;
 
@@ -186,7 +187,8 @@ app.post("/analyze", async (req, res) => {
       bme688: parseFloat(req.body.bme688),
     };
 
-    const pythonResp = await axios.post("http://127.0.0.1:5001/predict", mappedData);
+    const pythonResp = await axios.post(`${PYTHON_API_URL}/predict`, mappedData); // <-- Change this line
+
 
     const charts = pythonResp.data.charts || null;
     const pythonText = { ...pythonResp.data };
