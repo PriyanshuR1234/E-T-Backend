@@ -174,8 +174,8 @@ app.get("/submit", (req, res) => {
   );
 });
 
-// -------------------- ANALYZE ROUTE --------------------
-app.post("/analyze", async (req, res) => {
+// -------------------- API ROUTE FOR FRONTEND --------------------
+app.post("/api/analyze", async (req, res) => {
   try {
     const mappedData = {
       ph: parseFloat(req.body.ph),
@@ -187,8 +187,7 @@ app.post("/analyze", async (req, res) => {
       bme688: parseFloat(req.body.bme688),
     };
 
-    const pythonResp = await axios.post(`${PYTHON_API_URL}/predict`, mappedData); // <-- Change this line
-
+    const pythonResp = await axios.post(`${PYTHON_API_URL}/predict`, mappedData);
 
     const charts = pythonResp.data.charts || null;
     const pythonText = { ...pythonResp.data };
