@@ -23,7 +23,7 @@ const {
   PORT,
 } = process.env;
 
-const SERVER_PORT = PORT || 3000;
+// const SERVER_PORT = PORT || 3000;
 const PUBLIC_URL = BASE_URL || `http://localhost:${SERVER_PORT}`;
 
 // -------------------- Twilio Client --------------------
@@ -226,6 +226,6 @@ ${JSON.stringify(pythonText, null, 2)}
 });
 
 // -------------------- START SERVER --------------------
-app.listen(SERVER_PORT, () => {
-  console.log(`[Server] Listening on port ${SERVER_PORT}`);
+app.listen(process.env.PORT, () => {
+  console.log(`[Server] Listening on port ${process.env.PORT}`);
 });
