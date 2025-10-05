@@ -124,6 +124,29 @@ app.post("/make-outbound-call", async (req, res) => {
   }
 });
 
+
+// -------------------- HEALTH CHECK --------------------
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// -------------------- CONTINUOUS HEALTH CHECK --------------------
+const monitorServer = "https://monitor-server-8kgp.onrender.com/health";
+
+const checkMonitorServerHealth = async () => {
+  try {
+    await axios.get(monitorServer);
+    console.log(`[✅ Healthy] ${monitorServer} at ${new Date().toLocaleTimeString()}`);
+  } catch (err) {
+    console.error(`[❌ Down] ${monitorServer} at ${new Date().toLocaleTimeString()} - ${err.message}`);
+  }
+};
+
+// Check immediately and then every 5 seconds
+checkMonitorServerHealth();
+setInterval(checkMonitorServerHealth, 30000);
+
+
 // -------------------- CALL API ROUTE --------------------
 app.post("/call", async (req, res) => {
   const { to } = req.body;
@@ -139,13 +162,6 @@ app.post("/call", async (req, res) => {
   }
 });
 
-// -------------------- SUBMIT TEST ROUTE --------------------
-app.get("/submit", (req, res) => {
-  const { ph, tds, orp, color, mq3, mq135, mq136, mq138 } = req.query;
-  const ans = ph * tds * orp * color;
-  res.send(`submitted ${ph},${tds},${orp},${color},${mq3},${mq135},${mq136},${mq138} and results are ${ans}`);
-});
-
 // -------------------- API ROUTE FOR FRONTEND --------------------
 app.post("/api/analyze", async (req, res) => {
   try {
@@ -159,33 +175,58 @@ app.post("/api/analyze", async (req, res) => {
       bme688: parseFloat(req.body.bme688),
     };
 
-    // Call Python backend
+    // 🔹 Call Python backend
     const pythonResp = await axios.post(`${PYTHON_API_URL}/predict`, mappedData);
-    const charts = pythonResp.data.charts || null;
-    const pythonText = { ...pythonResp.data };
-    delete pythonText.charts;
+    const { charts, ...pythonText } = pythonResp.data; // remove charts/base64
 
-    let geminiText = "";
+    // 🔹 Prepare cleaned data for Gemini
+    const geminiInput = {
+      predicted_product: pythonText.predicted_product,
+      input_values: pythonText.input_values,
+      overall_match: pythonText.overall_match,
+      overall_impurity: pythonText.overall_impurity,
+      sensor_matches: pythonText.sensor_matches,
+      taste_profile: pythonText.taste_profile,
+    };
 
-    // Only send text data to Gemini
+    let geminiText = "Gemini API key not configured.";
+
     if (GEMINI_API_KEY) {
       try {
-        const prompt = `Hello`; // simple test prompt or you can use real text data
+        const prompt = `You are an Ayurvedic expert. Based on the following sensor and medicine data, provide:
+
+1. A clear analysis of the safety and quality.
+2. Specific Ayurvedic recommendations or solutions (herbs, formulations, or lifestyle advice).
+3. Expert notes highlighting cautions, observations, or additional guidance.
+
+Keep the response concise, professional, and actionable.  
+
+Data:\n${JSON.stringify(geminiInput, null, 2)}`;
+
         const geminiResp = await axios.post(
-          "https://generativelanguage.googleapis.com/v1beta/models/text-bison-001:generateText",
-          { prompt },
-          { headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GEMINI_API_KEY } }
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite-001:generateContent",
+          {
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": GEMINI_API_KEY,
+            },
+            timeout: 10000, // prevent hanging
+          }
         );
-        geminiText = geminiResp.data?.candidates?.[0]?.output || "";
+
+        geminiText =
+          geminiResp.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "No analysis from Gemini.";
       } catch (err) {
-        console.warn("⚠️ Gemini failed, returning Python data only:", err.message);
+        console.warn("⚠️ Gemini failed:", err.message);
         geminiText = "Gemini analysis unavailable.";
       }
-    } else {
-      geminiText = "Gemini API key not configured.";
     }
 
-    res.json({ ...pythonText, note: geminiText, charts });
+    res.json({ ...pythonText, note: geminiText });
   } catch (err) {
     console.error("API Analyze error:", err.message);
     res.status(500).json({ error: "Failed to fetch analysis results" });
