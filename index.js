@@ -25,7 +25,7 @@ const {
 } = process.env;
 
 const SERVER_PORT = PORT || 3000;
-const PUBLIC_URL = BASE_URL || `http://localhost:${SERVER_PORT}`;
+const PUBLIC_URL = BASE_URL || `https://e-t-backend.onrender.com:${SERVER_PORT}`;
 
 // -------------------- Twilio Client --------------------
 const twilioClient = Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
